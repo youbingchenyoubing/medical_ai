@@ -1,0 +1,58 @@
+# 项目配置文件
+
+# 数据配置
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  mask_dir: "data/masks"
+  clinical_file: "data/clinical.csv"
+  
+# 图像预处理参数
+preprocessing:
+  target_spacing: [1, 1, 1]
+  window_level: -600
+  window_width: 1500
+  normalize: true
+  clip_values: [-1000, 400]
+  
+# 特征提取参数
+feature_extraction:
+  bin_width: 25
+  resampled_spacing: [1, 1, 1]
+  interpolator: "sitkBSpline"
+  normalize: true
+  force2D: false
+  
+# 特征选择参数
+feature_selection:
+  method: "lasso"  # lasso, rfe, mutual_info
+  n_features: 15
+  cv_folds: 5
+  random_state: 42
+  
+# 模型参数
+model:
+  types: ["lr", "svm", "rf", "xgboost"]
+  cv_folds: 5
+  random_state: 42
+  
+# 训练参数
+training:
+  test_size: 0.2
+  val_size: 0.2
+  batch_size: 16
+  epochs: 100
+  early_stopping_patience: 10
+  
+# 评估参数
+evaluation:
+  metrics: ["auc", "accuracy", "sensitivity", "specificity"]
+  save_predictions: true
+  save_feature_importance: true
+  
+# 输出配置
+output:
+  save_dir: "results"
+  log_dir: "logs"
+  figure_format: "png"
+  figure_dpi: 300
