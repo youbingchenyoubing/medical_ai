@@ -1,16 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-影像组学完整流程主程序
-
-Usage:
-    python main.py --step 0  # 运行所有步骤
-    python main.py --step 1  # 数据预处理
-    python main.py --step 2  # 特征提取
-    python main.py --step 3  # 特征选择
-    python main.py --step 4  # 模型训练
-    python main.py --step 5  # 模型评估
-"""
 
 import os
 import sys
@@ -18,15 +7,16 @@ import argparse
 import yaml
 from pathlib import Path
 
-# 添加项目根目录到路径
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.data_preprocessing import DataPreprocessor
-from src.feature_extraction import FeatureExtractor
-from src.feature_selection import FeatureSelector
-from src.model_training import ModelTrainer
-from src.evaluation import ModelEvaluator
+from src.data_preprocessing import MRIPreprocessor
+from src.feature_extraction import PyRadiomicsExtractor
+from src.delta_features import DeltaFeatureCalculator
+from src.icc_analysis import ICCAnalyzer
+from src.feature_selection import CascadeFeatureSelector
+from src.model_training import MultiModelTrainer
+from src.evaluation import ComprehensiveEvaluator
 from src.utils import load_config, setup_logger, ensure_dir
 
 import pandas as pd
@@ -34,25 +24,18 @@ import numpy as np
 
 logger = setup_logger(__name__, log_file="logs/radiomics_pipeline.log")
 
-class RadiomicsPipeline:
-    """影像组学完整流程"""
-    
+
+class HCCpCRPipeline:
     def __init__(self, config_path: str = "config/config.yaml"):
-        """
-        初始化流程
-        
-        Args:
-            config_path: 配置文件路径
-        """
         self.config = load_config(config_path)
         self.setup_directories()
-        
-        logger.info("="*70)
-        logger.info("Radiomics Pipeline Initialized")
-        logger.info("="*70)
-    
+
+        logger.info("=" * 70)
+        logger.info("HCC pCR Prediction Pipeline Initialized")
+        logger.info(f"Project: {self.config['project']['name']}")
+        logger.info("=" * 70)
+
     def setup_directories(self):
-        """创建目录结构"""
         dirs = [
             self.config['data']['raw_dir'],
             self.config['data']['processed_dir'],
@@ -61,219 +44,306 @@ class RadiomicsPipeline:
             "results/features",
             "results/models",
             "results/figures",
+            "results/figures/shap",
             "logs"
         ]
-        
         for dir_path in dirs:
             ensure_dir(dir_path)
-        
-        logger.info("Directory structure created")
-    
+
     def run_step1_preprocessing(self):
-        """步骤1：数据预处理"""
-        logger.info("\n" + "="*70)
-        logger.info("Step 1: Data Preprocessing")
-        logger.info("="*70)
-        
-        preprocessor = DataPreprocessor(self.config)
-        preprocessor.batch_preprocess(
-            raw_dir=self.config['data']['raw_dir'],
-            output_dir=self.config['data']['processed_dir']
-        )
-        
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 1: MRI Data Preprocessing")
+        logger.info("=" * 70)
+
+        preprocessor = MRIPreprocessor(self.config)
+
+        raw_dir = self.config['data']['raw_dir']
+        processed_dir = self.config['data']['processed_dir']
+
+        pre_raw = os.path.join(raw_dir, "pre")
+        post_raw = os.path.join(raw_dir, "post")
+        pre_processed = os.path.join(processed_dir, "pre")
+        post_processed = os.path.join(processed_dir, "post")
+
+        if os.path.exists(pre_raw):
+            preprocessor.batch_preprocess(pre_raw, pre_processed, timepoint="pre")
+        else:
+            logger.warning(f"Pre-treatment data not found: {pre_raw}")
+
+        if os.path.exists(post_raw):
+            preprocessor.batch_preprocess(post_raw, post_processed, timepoint="post")
+        else:
+            logger.warning(f"Post-treatment data not found: {post_raw}")
+
         logger.info("Step 1 completed")
-    
+
     def run_step2_feature_extraction(self):
-        """步骤2：特征提取"""
-        logger.info("\n" + "="*70)
-        logger.info("Step 2: Feature Extraction")
-        logger.info("="*70)
-        
-        extractor = FeatureExtractor(self.config)
-        
-        # 检查是否有临床数据
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 2: PyRadiomics Feature Extraction")
+        logger.info("=" * 70)
+
+        extractor = PyRadiomicsExtractor(self.config)
+
+        feature_counts = extractor.count_expected_features()
+        logger.info(f"Expected features per sequence: {feature_counts['per_sequence']}")
+        logger.info(f"Expected total features: {feature_counts['total']}")
+
+        processed_dir = self.config['data']['processed_dir']
+        output_dir = "results/features"
+
+        results = extractor.extract_both_timepoints(processed_dir, output_dir)
+
+        for tp, df in results.items():
+            logger.info(f"  {tp}: {len(df)} patients, {len(df.columns) - 2} features")
+
+        logger.info("Step 2 completed")
+        return results
+
+    def run_step3_delta_features(self):
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 3: Delta Feature Computation")
+        logger.info("=" * 70)
+
+        calculator = DeltaFeatureCalculator(self.config)
+
+        pre_csv = "results/features/radiomics_features_pre.csv"
+        post_csv = "results/features/radiomics_features_post.csv"
+
+        if not os.path.exists(pre_csv) or not os.path.exists(post_csv):
+            logger.error("Pre/post feature files not found. Run step 2 first.")
+            return None
+
+        df_delta = calculator.load_and_compute(pre_csv, post_csv, "results/features")
+
+        logger.info(f"Delta features: {len(df_delta)} patients, {len(df_delta.columns) - 1} columns")
+        logger.info("Step 3 completed")
+        return df_delta
+
+    def run_step4_icc_analysis(self):
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 4: ICC Reproducibility Analysis")
+        logger.info("=" * 70)
+
+        analyzer = ICCAnalyzer(self.config)
+
+        rater1_csv = "results/features/radiomics_features_rater1.csv"
+        rater2_csv = "results/features/radiomics_features_rater2.csv"
+
+        if not os.path.exists(rater1_csv) or not os.path.exists(rater2_csv):
+            logger.warning("Rater feature files not found. ICC analysis requires "
+                           "two independent segmentations.")
+            logger.info("Skipping ICC analysis (will be skipped in feature selection)")
+            return None
+
+        icc_results, high_rep_features = analyzer.load_rater_features_and_compute(
+            rater1_csv, rater2_csv, "results/features"
+        )
+
+        logger.info(f"ICC: {len(high_rep_features)} features passed threshold")
+        logger.info("Step 4 completed")
+        return icc_results
+
+    def run_step5_feature_selection(self):
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 5: Cascade Feature Selection")
+        logger.info("=" * 70)
+
+        delta_csv = "results/features/radiomics_features_delta.csv"
+        if not os.path.exists(delta_csv):
+            logger.error("Delta features not found. Run step 3 first.")
+            return None
+
+        df = pd.read_csv(delta_csv)
+
+        feature_cols = [c for c in df.columns
+                        if c.startswith('delta_') and c != 'patient_id']
+
         clinical_file = self.config['data']['clinical_file']
         if os.path.exists(clinical_file):
-            df = extractor.extract_features_with_labels(
-                image_dir=self.config['data']['processed_dir'],
-                mask_dir=self.config['data']['mask_dir'],
-                label_csv=clinical_file,
-                output_csv="results/features/radiomics_features.csv"
-            )
-        else:
-            df = extractor.extract_features_batch(
-                image_dir=self.config['data']['processed_dir'],
-                mask_dir=self.config['data']['mask_dir'],
-                output_csv="results/features/radiomics_features.csv"
-            )
-        
-        logger.info("Step 2 completed")
-        return df
-    
-    def run_step3_feature_selection(self):
-        """步骤3：特征选择"""
-        logger.info("\n" + "="*70)
-        logger.info("Step 3: Feature Selection")
-        logger.info("="*70)
-        
-        # 加载特征
-        features_path = "results/features/radiomics_features.csv"
-        if not os.path.exists(features_path):
-            logger.error(f"Features file not found: {features_path}")
-            logger.error("Please run step 2 first")
+            clinical_df = pd.read_csv(clinical_file)
+            if 'patient_id' in clinical_df.columns:
+                df = df.merge(clinical_df, on='patient_id', how='left')
+
+        label_col = 'pCR'
+        if label_col not in df.columns:
+            logger.error(f"Label column '{label_col}' not found in data")
             return None
-        
-        df = pd.read_csv(features_path)
-        
-        # 准备数据
-        feature_cols = [col for col in df.columns if col.startswith('original_')]
-        
-        # 检查是否有标签
-        if 'label' not in df.columns and 'response' not in df.columns:
-            logger.error("No label column found in features file")
-            logger.error("Please ensure clinical data contains 'label' or 'response' column")
-            return None
-        
-        label_col = 'label' if 'label' in df.columns else 'response'
+
         X = df[feature_cols].values
         y = df[label_col].values
-        
-        # 特征选择
-        selector = FeatureSelector(self.config)
-        X_selected, selected_names = selector.fit_transform(X, y, feature_cols)
-        
-        # 保存
+
+        icc_results = None
+        icc_csv = "results/features/icc_results.csv"
+        if os.path.exists(icc_csv):
+            icc_df = pd.read_csv(icc_csv)
+            icc_results = dict(zip(icc_df['feature'], icc_df['icc']))
+
+        selector = CascadeFeatureSelector(self.config)
+        X_selected, selected_names = selector.fit_transform(
+            X, y, feature_cols,
+            icc_results=icc_results,
+            output_dir="results/figures"
+        )
+
         selected_df = pd.DataFrame(X_selected, columns=selected_names)
-        selected_df['case_id'] = df['case_id'].values
+        selected_df['patient_id'] = df['patient_id'].values
         selected_df[label_col] = y
+
+        if 'afp_response' in df.columns:
+            selected_df['afp_response'] = df['afp_response'].values
+
         selected_df.to_csv("results/features/selected_features.csv", index=False)
-        
-        # 保存选中的特征列表
         selector.save_selected_features("results/features/selected_feature_names.txt")
-        
-        logger.info("Step 3 completed")
+        selector.save_selection_log("results/features/selection_log.csv")
+
+        logger.info(f"Step 5 completed: {len(selected_names)} features selected")
         return selected_df
-    
-    def run_step4_model_training(self):
-        """步骤4：模型训练"""
-        logger.info("\n" + "="*70)
-        logger.info("Step 4: Model Training")
-        logger.info("="*70)
-        
-        # 加载数据
-        features_path = "results/features/selected_features.csv"
-        if not os.path.exists(features_path):
-            logger.error(f"Features file not found: {features_path}")
-            logger.error("Please run step 3 first")
+
+    def run_step6_model_training(self):
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 6: Multi-Model Training (14 models)")
+        logger.info("=" * 70)
+
+        features_csv = "results/features/selected_features.csv"
+        if not os.path.exists(features_csv):
+            logger.error("Selected features not found. Run step 5 first.")
             return None, None
-        
-        df = pd.read_csv(features_path)
-        
-        # 获取特征列
-        feature_cols = [col for col in df.columns 
-                       if col not in ['case_id', 'label', 'response']]
-        
-        # 确定标签列
-        label_col = 'label' if 'label' in df.columns else 'response'
-        
-        # 训练
-        trainer = ModelTrainer(self.config)
-        trainer.prepare_data(df, feature_cols, label_col=label_col)
-        models, results = trainer.train_models()
-        
-        # 保存最佳模型
+
+        df = pd.read_csv(features_csv)
+
+        feature_cols = [c for c in df.columns
+                        if c not in ['patient_id', 'pCR', 'afp_response',
+                                     'site', 'label', 'response']]
+
+        label_col = 'pCR'
+        if label_col not in df.columns:
+            logger.error(f"Label column '{label_col}' not found")
+            return None, None
+
+        external_csv = "results/features/selected_features_external.csv"
+        external_df = None
+        if os.path.exists(external_csv):
+            external_df = pd.read_csv(external_csv)
+
+        trainer = MultiModelTrainer(self.config)
+        trainer.prepare_data(df, feature_cols, label_col=label_col,
+                             external_df=external_df)
+        models, results = trainer.train_all_models()
+
         best_model, best_name = trainer.get_best_model()
         trainer.save_model(best_model, f"best_model_{best_name}")
-        
-        logger.info("Step 4 completed")
+        trainer.save_scaler()
+
+        summary = trainer.get_results_summary()
+        summary.to_csv("results/models/model_comparison.csv", index=False)
+        logger.info(f"\nModel comparison:\n{summary.to_string()}")
+
+        logger.info("Step 6 completed")
         return models, results
-    
-    def run_step5_evaluation(self):
-        """步骤5：模型评估"""
-        logger.info("\n" + "="*70)
-        logger.info("Step 5: Model Evaluation")
-        logger.info("="*70)
-        
-        # 加载模型和结果
-        models_dir = "results/models"
-        if not os.path.exists(models_dir):
-            logger.error(f"Models directory not found: {models_dir}")
-            logger.error("Please run step 4 first")
-            return
-        
-        # 这里需要重新加载模型和测试数据
-        # 简化版本：直接从步骤4继续
-        
-        logger.info("Step 5 completed")
-    
+
+    def run_step7_evaluation(self):
+        logger.info("\n" + "=" * 70)
+        logger.info("Step 7: Comprehensive Model Evaluation")
+        logger.info("=" * 70)
+
+        features_csv = "results/features/selected_features.csv"
+        df = pd.read_csv(features_csv)
+
+        feature_cols = [c for c in df.columns
+                        if c not in ['patient_id', 'pCR', 'afp_response',
+                                     'site', 'label', 'response']]
+        label_col = 'pCR'
+
+        trainer = MultiModelTrainer(self.config)
+        trainer.prepare_data(df, feature_cols, label_col=label_col)
+
+        models, results = trainer.train_all_models()
+
+        evaluator = ComprehensiveEvaluator(self.config)
+
+        y_external = None
+        if hasattr(trainer, 'X_external'):
+            y_external = trainer.y_external
+
+        df_metrics = evaluator.generate_full_report(
+            results, trainer.y_test, y_external,
+            output_dir="results/figures"
+        )
+
+        best_model, best_name = trainer.get_best_model()
+
+        evaluator.shap_analysis(
+            best_model, trainer.X_test, feature_cols,
+            output_dir="results/figures/shap"
+        )
+
+        if 'afp_response' in df.columns:
+            logger.info("Building combined radiomics+AFP model")
+            best_prob = results[best_name]['y_test_prob']
+            radiomics_score_train = best_prob
+
+            if hasattr(trainer, 'X_external'):
+                ext_prob = results[best_name].get('y_ext_prob')
+                if ext_prob is not None:
+                    radiomics_score_ext = ext_prob
+
+        logger.info("Step 7 completed")
+        return df_metrics
+
     def run_all(self):
-        """运行完整流程"""
-        logger.info("\n" + "="*70)
+        logger.info("\n" + "=" * 70)
         logger.info("Running Complete Pipeline")
-        logger.info("="*70)
-        
+        logger.info("=" * 70)
+
         self.run_step1_preprocessing()
         self.run_step2_feature_extraction()
-        self.run_step3_feature_selection()
-        models, results = self.run_step4_model_training()
-        
-        if models and results:
-            # 评估
-            evaluator = ModelEvaluator(self.config)
-            
-            # 加载测试数据
-            df = pd.read_csv("results/features/selected_features.csv")
-            feature_cols = [col for col in df.columns 
-                           if col not in ['case_id', 'label', 'response']]
-            label_col = 'label' if 'label' in df.columns else 'response'
-            
-            # 这里需要重新准备数据以获取y_test
-            # 简化版本
-            
-            logger.info("\n" + "="*70)
-            logger.info("Pipeline Completed Successfully!")
-            logger.info("="*70)
-    
+        self.run_step3_delta_features()
+        self.run_step4_icc_analysis()
+        self.run_step5_feature_selection()
+        self.run_step6_model_training()
+        self.run_step7_evaluation()
+
+        logger.info("\n" + "=" * 70)
+        logger.info("Pipeline Completed Successfully!")
+        logger.info("=" * 70)
+
     def run_step(self, step: int):
-        """
-        运行指定步骤
-        
-        Args:
-            step: 步骤编号 (1-5)
-        """
         step_methods = {
             1: self.run_step1_preprocessing,
             2: self.run_step2_feature_extraction,
-            3: self.run_step3_feature_selection,
-            4: self.run_step4_model_training,
-            5: self.run_step5_evaluation
+            3: self.run_step3_delta_features,
+            4: self.run_step4_icc_analysis,
+            5: self.run_step5_feature_selection,
+            6: self.run_step6_model_training,
+            7: self.run_step7_evaluation
         }
-        
+
         if step not in step_methods:
             logger.error(f"Invalid step number: {step}")
-            logger.info("Valid steps: 1-5")
+            logger.info("Valid steps: 1-7")
             return
-        
+
         step_methods[step]()
 
+
 def main():
-    """主函数"""
-    parser = argparse.ArgumentParser(description='Radiomics Pipeline')
-    parser.add_argument('--step', type=int, default=0, 
-                       help='Run specific step (1-5), 0 for all steps')
+    parser = argparse.ArgumentParser(
+        description='HCC pCR Prediction - MRI Delta Radiomics Pipeline'
+    )
+    parser.add_argument('--step', type=int, default=0,
+                        help='Run specific step (1-7), 0 for all steps')
     parser.add_argument('--config', type=str, default='config/config.yaml',
-                       help='Path to config file')
-    
+                        help='Path to config file')
+
     args = parser.parse_args()
-    
-    # 初始化流程
-    pipeline = RadiomicsPipeline(config_path=args.config)
-    
-    # 运行
+
+    pipeline = HCCpCRPipeline(config_path=args.config)
+
     if args.step == 0:
         pipeline.run_all()
     else:
         pipeline.run_step(args.step)
+
 
 if __name__ == "__main__":
     main()

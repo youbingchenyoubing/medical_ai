@@ -11,179 +11,219 @@ from .utils import ensure_dir, setup_logger
 
 logger = setup_logger(__name__)
 
-class FeatureExtractor:
-    """影像组学特征提取器"""
-    
+
+class PyRadiomicsExtractor:
     def __init__(self, config: dict):
-        """
-        初始化特征提取器
-        
-        Args:
-            config: 配置字典
-        """
         self.config = config
-        self.extractor = featureextractor.RadiomicsFeatureExtractor()
-        
-        # 设置参数
-        params = config['feature_extraction']
-        self.extractor.settings['binWidth'] = params['bin_width']
-        self.extractor.settings['resampledPixelSpacing'] = params['resampled_spacing']
-        self.extractor.settings['interpolator'] = params['interpolator']
-        self.extractor.settings['normalize'] = params['normalize']
-        self.extractor.settings['force2D'] = params['force2D']
-        
-        logger.info("FeatureExtractor initialized")
-        logger.info(f"Settings: {self.extractor.settings}")
-    
-    def extract_features_single_case(
-        self, 
-        image_path: str, 
-        mask_path: str
+        self.fe_config = config['feature_extraction']
+        self.sequences = config['mri_sequences']
+        self.extractor = self._create_extractor()
+        logger.info("PyRadiomicsExtractor initialized")
+        logger.info(f"PyRadiomics settings: {self.extractor.settings}")
+
+    def _create_extractor(self) -> featureextractor.RadiomicsFeatureExtractor:
+        extractor = featureextractor.RadiomicsFeatureExtractor()
+
+        extractor.settings['binWidth'] = self.fe_config['bin_width']
+        extractor.settings['resampledPixelSpacing'] = self.fe_config['resampled_spacing']
+        extractor.settings['interpolator'] = self.fe_config['interpolator']
+        extractor.settings['normalize'] = self.fe_config['normalize']
+        extractor.settings['force2D'] = self.fe_config['force2D']
+
+        extractor.disableAllImageTypes()
+        extractor.disableAllFeatures()
+
+        for img_type in self.fe_config['image_types']:
+            if img_type == 'Original':
+                extractor.enableImageTypeByName('Original')
+            elif img_type == 'LoG':
+                sigma_values = self.fe_config['log_sigma_values']
+                extractor.enableImageTypeByName(
+                    'LoG',
+                    customArgs={'sigma': sigma_values}
+                )
+            elif img_type == 'Wavelet':
+                extractor.enableImageTypeByName('Wavelet')
+
+        for feat_class in self.fe_config['feature_classes']:
+            extractor.enableFeatureClassByName(feat_class)
+
+        return extractor
+
+    def extract_single_sequence(
+        self,
+        image_path: str,
+        mask_path: str,
+        sequence_name: str = ""
     ) -> Optional[Dict]:
-        """
-        提取单个病例的特征
-        
-        Args:
-            image_path: 图像路径
-            mask_path: mask路径
-            
-        Returns:
-            特征字典
-        """
         try:
-            # 读取图像和mask
             image = sitk.ReadImage(image_path)
             mask = sitk.ReadImage(mask_path)
-            
-            # 提取特征
+
+            if image.GetSize() != mask.GetSize():
+                logger.warning(
+                    f"Size mismatch: image={image.GetSize()}, "
+                    f"mask={mask.GetSize()}. Resampling mask to image."
+                )
+                mask = sitk.Resample(
+                    mask, image,
+                    sitk.Transform(),
+                    sitk.sitkNearestNeighbor, 0,
+                    mask.GetPixelID()
+                )
+
             features = self.extractor.execute(image, mask)
-            
-            # 过滤掉元数据，只保留特征值
+
             feature_dict = {}
+            prefix = f"{sequence_name}_" if sequence_name else ""
             for key, value in features.items():
                 if key.startswith('original_'):
-                    feature_dict[key] = float(value) if not np.isnan(value) else 0.0
-            
-            logger.info(f"Extracted {len(feature_dict)} features from {image_path}")
-            
+                    feat_name = f"{prefix}{key}"
+                    val = float(value)
+                    feature_dict[feat_name] = val if not np.isnan(val) else 0.0
+
+            logger.info(
+                f"Extracted {len(feature_dict)} features from "
+                f"{os.path.basename(image_path)} ({sequence_name})"
+            )
             return feature_dict
-            
+
         except Exception as e:
-            logger.error(f"Error extracting features from {image_path}: {str(e)}")
+            logger.error(f"Error extracting from {image_path}: {str(e)}")
             return None
-    
-    def extract_features_batch(
-        self, 
-        image_dir: str, 
-        mask_dir: str, 
-        output_csv: str
-    ) -> pd.DataFrame:
-        """
-        批量提取特征
-        
-        Args:
-            image_dir: 图像目录
-            mask_dir: mask目录
-            output_csv: 输出CSV文件路径
-            
-        Returns:
-            特征DataFrame
-        """
-        logger.info(f"Batch extracting features from {image_dir}")
-        
-        all_features = []
-        
-        # 获取所有图像文件
-        image_files = []
-        for f in os.listdir(image_dir):
-            if f.endswith('.nii') or f.endswith('.nii.gz'):
-                image_files.append(f)
-        
-        logger.info(f"Found {len(image_files)} images")
-        
-        # 提取特征
-        for image_file in tqdm(image_files, desc="Extracting features"):
-            case_id = image_file.replace('.nii.gz', '').replace('.nii', '')
-            image_path = os.path.join(image_dir, image_file)
-            
-            # 查找对应的mask
-            mask_file = f"{case_id}_mask.nii.gz"
-            mask_path = os.path.join(mask_dir, mask_file)
-            
-            if not os.path.exists(mask_path):
-                logger.warning(f"Mask not found for {case_id}")
+
+    def extract_patient_features(
+        self,
+        patient_dir: str,
+        timepoint: str = "pre"
+    ) -> Optional[Dict]:
+        all_features = {}
+        mask_path = os.path.join(patient_dir, f"{timepoint}_mask.nii.gz")
+
+        if not os.path.exists(mask_path):
+            logger.warning(f"Mask not found: {mask_path}")
+            return None
+
+        for seq_info in self.sequences:
+            seq_code = seq_info['code']
+            image_path = os.path.join(
+                patient_dir, f"{timepoint}_{seq_code}.nii.gz"
+            )
+
+            if not os.path.exists(image_path):
+                logger.warning(f"Image not found: {image_path}")
                 continue
-            
-            features = self.extract_features_single_case(image_path, mask_path)
-            
+
+            features = self.extract_single_sequence(
+                image_path=image_path,
+                mask_path=mask_path,
+                sequence_name=seq_code
+            )
+
             if features:
-                features['case_id'] = case_id
+                all_features.update(features)
+
+        return all_features if all_features else None
+
+    def extract_batch(
+        self,
+        processed_dir: str,
+        mask_dir: str,
+        output_csv: str,
+        timepoint: str = "pre"
+    ) -> pd.DataFrame:
+        logger.info(f"Batch extracting features ({timepoint}) from {processed_dir}")
+
+        all_features = []
+
+        patient_dirs = sorted([
+            d for d in os.listdir(processed_dir)
+            if os.path.isdir(os.path.join(processed_dir, d))
+        ])
+
+        logger.info(f"Found {len(patient_dirs)} patients")
+
+        for patient_id in tqdm(patient_dirs, desc=f"Extracting ({timepoint})"):
+            patient_dir = os.path.join(processed_dir, patient_id)
+
+            features = self.extract_patient_features(
+                patient_dir=patient_dir,
+                timepoint=timepoint
+            )
+
+            if features:
+                features['patient_id'] = patient_id
+                features['timepoint'] = timepoint
                 all_features.append(features)
-        
-        # 转换为DataFrame
+
         df = pd.DataFrame(all_features)
-        
-        # 保存
+
         ensure_dir(os.path.dirname(output_csv))
         df.to_csv(output_csv, index=False)
-        
-        logger.info(f"Features saved to {output_csv}")
-        logger.info(f"Total cases: {len(df)}, Total features: {len(df.columns) - 1}")
-        
+
+        feature_cols = [c for c in df.columns
+                        if c not in ['patient_id', 'timepoint']]
+        logger.info(
+            f"Features saved to {output_csv}: "
+            f"{len(df)} patients, {len(feature_cols)} features"
+        )
         return df
-    
-    def extract_features_with_labels(
+
+    def extract_both_timepoints(
         self,
-        image_dir: str,
-        mask_dir: str,
-        label_csv: str,
-        output_csv: str
-    ) -> pd.DataFrame:
-        """
-        提取特征并合并标签
-        
-        Args:
-            image_dir: 图像目录
-            mask_dir: mask目录
-            label_csv: 标签CSV文件
-            output_csv: 输出CSV文件路径
-            
-        Returns:
-            特征DataFrame
-        """
-        # 提取特征
-        features_df = self.extract_features_batch(image_dir, mask_dir, output_csv)
-        
-        # 加载标签
-        labels_df = pd.read_csv(label_csv)
-        
-        # 合并
-        merged_df = features_df.merge(labels_df, on='case_id', how='left')
-        
-        # 保存
-        merged_df.to_csv(output_csv, index=False)
-        
-        logger.info(f"Merged features with labels. Total cases: {len(merged_df)}")
-        
-        return merged_df
-    
+        processed_dir: str,
+        output_dir: str
+    ) -> Dict[str, pd.DataFrame]:
+        logger.info("Extracting features for both timepoints")
+
+        results = {}
+        for timepoint in ['pre', 'post']:
+            output_csv = os.path.join(
+                output_dir, f"radiomics_features_{timepoint}.csv"
+            )
+            df = self.extract_batch(
+                processed_dir=processed_dir,
+                mask_dir="",
+                output_csv=output_csv,
+                timepoint=timepoint
+            )
+            results[timepoint] = df
+
+        return results
+
     def get_feature_names(self) -> List[str]:
-        """
-        获取特征名称列表
-        
-        Returns:
-            特征名称列表
-        """
-        # 返回所有启用的特征类别
         feature_names = []
-        
-        for feature_class in self.extractor.enabledFeatures.keys():
-            if not self.extractor.enabledFeatures[feature_class]:
-                # 如果为空，表示启用该类别的所有特征
-                feature_names.append(f"{feature_class}_*")
-            else:
-                # 否则添加具体特征
-                for feature in self.extractor.enabledFeatures[feature_class]:
-                    feature_names.append(f"original_{feature_class}_{feature}")
-        
+
+        for seq_info in self.sequences:
+            seq_code = seq_info['code']
+            prefix = f"{seq_code}_original_"
+
+            for feature_class in self.fe_config['feature_classes']:
+                feature_names.append(f"{prefix}{feature_class}_*")
+
         return feature_names
+
+    def count_expected_features(self) -> Dict[str, int]:
+        counts = {
+            'firstorder': 18,
+            'shape': 14,
+            'glcm': 24,
+            'glrlm': 16,
+            'glszm': 16,
+            'gldm': 14,
+            'ngtdm': 5,
+        }
+
+        total_per_image_type = sum(counts.values())
+        n_image_types = 1 + len(self.fe_config['log_sigma_values']) + 8
+        total_per_sequence = total_per_image_type * n_image_types
+        n_sequences = len(self.sequences)
+
+        return {
+            'per_image_type': total_per_image_type,
+            'n_image_types': n_image_types,
+            'per_sequence': total_per_sequence,
+            'n_sequences': n_sequences,
+            'total': total_per_sequence * n_sequences,
+            'class_breakdown': counts
+        }

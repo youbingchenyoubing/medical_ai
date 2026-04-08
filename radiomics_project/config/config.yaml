@@ -1,56 +1,172 @@
-# 项目配置文件
+project:
+  name: "MRI_Delta_Radiomics_HCC_pCR"
+  description: "基于MRI Delta影像组学预测HCC免疫治疗后病理完全缓解"
+  version: "2.0.0"
 
-# 数据配置
 data:
   raw_dir: "data/raw"
   processed_dir: "data/processed"
   mask_dir: "data/masks"
   clinical_file: "data/clinical.csv"
-  
-# 图像预处理参数
+  pre_dir: "data/raw/pre"
+  post_dir: "data/raw/post"
+  train_sites:
+    - "zhongshan"
+  test_sites:
+    - "zhongshan"
+  external_sites:
+    - "tianjin"
+    - "ruijin"
+
+mri_sequences:
+  - name: "T1WI"
+    code: "T1WI"
+    is_reference: true
+  - name: "T1WI_Arterial"
+    code: "T1WI_ART"
+    is_reference: true
+  - name: "T1WI_Portal"
+    code: "T1WI_POR"
+    register_to: "T1WI_ART"
+  - name: "T1WI_Delayed"
+    code: "T1WI_DEL"
+    register_to: "T1WI_ART"
+  - name: "T2WI"
+    code: "T2WI"
+    register_to: "T1WI"
+  - name: "DWI"
+    code: "DWI"
+    register_to: "T1WI"
+  - name: "ADC"
+    code: "ADC"
+    register_to: "T1WI"
+  - name: "T2WI_FLAIR"
+    code: "T2WI_FLAIR"
+    register_to: "T1WI"
+
 preprocessing:
   target_spacing: [1, 1, 1]
-  window_level: -600
-  window_width: 1500
   normalize: true
-  clip_values: [-1000, 400]
-  
-# 特征提取参数
+  n4_bias_correction:
+    enabled: true
+    max_iterations: [500, 500, 500, 500]
+    convergence_threshold: 0.001
+    fwhm: 0.15
+  registration:
+    metric: "MattesMutualInformation"
+    histogram_bins: 50
+    sampling_percentage: 0.01
+    learning_rate: 1.0
+    max_iterations: 200
+    convergence_min_value: 1.0e-6
+    convergence_window_size: 10
+  normalization:
+    method: "zscore_tumor"
+    clip_range: [-3, 3]
+
 feature_extraction:
   bin_width: 25
   resampled_spacing: [1, 1, 1]
   interpolator: "sitkBSpline"
   normalize: true
   force2D: false
-  
-# 特征选择参数
+  image_types:
+    - "Original"
+    - "LoG"
+    - "Wavelet"
+  log_sigma_values: [1.0, 2.0, 3.0, 5.0]
+  wavelet_type: "haar"
+  feature_classes:
+    - "firstorder"
+    - "shape"
+    - "glcm"
+    - "glrlm"
+    - "glszm"
+    - "gldm"
+    - "ngtdm"
+
+delta_features:
+  epsilon: 1.0e-7
+  feature_types:
+    - "baseline"
+    - "preoperative"
+    - "delta"
+
+icc_analysis:
+  n_samples: 30
+  icc_threshold: 0.80
+  icc_type: "ICC2"
+
 feature_selection:
-  method: "lasso"  # lasso, rfe, mutual_info
-  n_features: 15
-  cv_folds: 5
+  pipeline:
+    - "icc"
+    - "ttest"
+    - "spearman"
+    - "lasso"
+    - "random_forest"
+  ttest_alpha: 0.05
+  spearman_threshold: 0.9
+  lasso_cv_folds: 10
+  rf_n_top_features: 15
   random_state: 42
-  
-# 模型参数
+
 model:
-  types: ["lr", "svm", "rf", "xgboost"]
+  types:
+    - "LR"
+    - "SVM"
+    - "KNN"
+    - "DT"
+    - "RF"
+    - "ET"
+    - "AdaBoost"
+    - "GB"
+    - "XGBoost"
+    - "LightGBM"
+    - "CatBoost"
+    - "GNB"
+    - "LDA"
+    - "MLP"
   cv_folds: 5
   random_state: 42
-  
-# 训练参数
+  mlp:
+    hidden_layer_sizes:
+      - [64, 32]
+      - [128, 64, 32]
+      - [64, 32, 16]
+    alpha: [0.0001, 0.001, 0.01]
+    learning_rate_init: [0.001, 0.01]
+    batch_size: [16, 32]
+    activation: "relu"
+    solver: "adam"
+    max_iter: 1000
+    early_stopping: true
+    validation_fraction: 0.1
+    n_iter_no_change: 20
+
+combined_model:
+  clinical_features:
+    - "afp_response"
+  method: "logistic"
+
 training:
   test_size: 0.2
-  val_size: 0.2
-  batch_size: 16
-  epochs: 100
-  early_stopping_patience: 10
-  
-# 评估参数
+  val_size: 0.15
+  random_state: 42
+
 evaluation:
-  metrics: ["auc", "accuracy", "sensitivity", "specificity"]
-  save_predictions: true
-  save_feature_importance: true
-  
-# 输出配置
+  metrics:
+    - "auc"
+    - "accuracy"
+    - "sensitivity"
+    - "specificity"
+    - "ppv"
+    - "npv"
+  calibration_bins: 10
+  dca_threshold_range: [0.01, 0.99]
+  dca_step: 0.01
+  shap_background_samples: 100
+  shap_top_features: 10
+
 output:
   save_dir: "results"
   log_dir: "logs"
