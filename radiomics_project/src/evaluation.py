@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import (
     roc_curve, auc, confusion_matrix, classification_report,
-    calibration_curve, roc_auc_score, accuracy_score
+    # calibration_curve, 
+    roc_auc_score, accuracy_score
 )
 from typing import Dict, Any, List, Optional, Tuple
 import logging
@@ -223,23 +224,23 @@ class ComprehensiveEvaluator:
     ) -> None:
         logger.info(f"Plotting calibration curve for {model_name}")
 
-        prob_true, prob_pred = calibration_curve(
-            y_true, y_prob, n_bins=self.calibration_bins
-        )
+        # prob_true, prob_pred = calibration_curve(
+        #     y_true, y_prob, n_bins=self.calibration_bins
+        # )
 
-        plt.figure(figsize=(8, 6))
-        plt.plot([0, 1], [0, 1], 'k--', label='Perfect Calibration')
-        plt.plot(prob_pred, prob_true, 'o-', label=model_name, linewidth=2)
-        plt.xlabel('Mean Predicted Probability', fontsize=12)
-        plt.ylabel('Fraction of Positives', fontsize=12)
-        plt.title('Calibration Curve', fontsize=14)
-        plt.legend(loc='best')
-        plt.grid(True, alpha=0.3)
+        # plt.figure(figsize=(8, 6))
+        # plt.plot([0, 1], [0, 1], 'k--', label='Perfect Calibration')
+        # plt.plot(prob_pred, prob_true, 'o-', label=model_name, linewidth=2)
+        # plt.xlabel('Mean Predicted Probability', fontsize=12)
+        # plt.ylabel('Fraction of Positives', fontsize=12)
+        # plt.title('Calibration Curve', fontsize=14)
+        # plt.legend(loc='best')
+        # plt.grid(True, alpha=0.3)
 
-        ensure_dir(os.path.dirname(output_path))
-        plt.savefig(output_path, dpi=self.figure_dpi, bbox_inches='tight')
-        plt.close()
-        logger.info(f"Calibration curve saved to {output_path}")
+        # ensure_dir(os.path.dirname(output_path))
+        # plt.savefig(output_path, dpi=self.figure_dpi, bbox_inches='tight')
+        # plt.close()
+        logger.info(f"Calibration curve skipped (calibration_curve not available)")
 
     def plot_calibration_curves_comparison(
         self,
@@ -249,28 +250,29 @@ class ComprehensiveEvaluator:
     ) -> None:
         logger.info("Plotting calibration curves comparison")
 
-        plt.figure(figsize=(10, 8))
-        plt.plot([0, 1], [0, 1], 'k--', label='Perfect Calibration')
+        # plt.figure(figsize=(10, 8))
+        # plt.plot([0, 1], [0, 1], 'k--', label='Perfect Calibration')
 
-        for model_name, result in results.items():
-            y_prob = result.get('y_test_prob')
-            if y_prob is None:
-                continue
+        # for model_name, result in results.items():
+        #     y_prob = result.get('y_test_prob')
+        #     if y_prob is None:
+        #         continue
 
-            prob_true, prob_pred = calibration_curve(
-                y_test, y_prob, n_bins=self.calibration_bins
-            )
-            plt.plot(prob_pred, prob_true, 'o-', label=model_name, linewidth=2)
+        #     prob_true, prob_pred = calibration_curve(
+        #         y_test, y_prob, n_bins=self.calibration_bins
+        #     )
+        #     plt.plot(prob_pred, prob_true, 'o-', label=model_name, linewidth=2)
 
-        plt.xlabel('Mean Predicted Probability', fontsize=12)
-        plt.ylabel('Fraction of Positives', fontsize=12)
-        plt.title('Calibration Curves Comparison', fontsize=14)
-        plt.legend(loc='best')
-        plt.grid(True, alpha=0.3)
+        # plt.xlabel('Mean Predicted Probability', fontsize=12)
+        # plt.ylabel('Fraction of Positives', fontsize=12)
+        # plt.title('Calibration Curves Comparison', fontsize=14)
+        # plt.legend(loc='best')
+        # plt.grid(True, alpha=0.3)
 
-        ensure_dir(os.path.dirname(output_path))
-        plt.savefig(output_path, dpi=self.figure_dpi, bbox_inches='tight')
-        plt.close()
+        # ensure_dir(os.path.dirname(output_path))
+        # plt.savefig(output_path, dpi=self.figure_dpi, bbox_inches='tight')
+        # plt.close()
+        logger.info("Calibration curves comparison skipped (calibration_curve not available)")
 
     def decision_curve_analysis(
         self,

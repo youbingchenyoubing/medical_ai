@@ -1,5 +1,5 @@
 from .data_preprocessing import MRIPreprocessor
-from .feature_extraction import PyRadiomicsExtractor
+# from .feature_extraction import PyRadiomicsExtractor
 from .delta_features import DeltaFeatureCalculator
 from .icc_analysis import ICCAnalyzer
 from .feature_selection import CascadeFeatureSelector

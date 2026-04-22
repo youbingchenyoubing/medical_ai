@@ -15,7 +15,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.utils import load_config, ensure_dir
-from src.feature_selection import FeatureSelector
+from src.feature_selection import CascadeFeatureSelector
 
 class TestUtils(unittest.TestCase):
     """工具函数测试"""
@@ -46,9 +46,11 @@ class TestFeatureSelector(unittest.TestCase):
         """设置测试数据"""
         self.config = {
             'feature_selection': {
-                'method': 'lasso',
-                'n_features': 5,
-                'cv_folds': 3,
+                'pipeline': ['lasso'],
+                'ttest_alpha': 0.05,
+                'spearman_threshold': 0.8,
+                'lasso_cv_folds': 3,
+                'rf_n_top_features': 5,
                 'random_state': 42
             }
         }
@@ -61,13 +63,13 @@ class TestFeatureSelector(unittest.TestCase):
     
     def test_lasso_selection(self):
         """测试LASSO特征选择"""
-        selector = FeatureSelector(self.config)
+        selector = CascadeFeatureSelector(self.config)
         X_selected, selected_names = selector.fit_transform(
             self.X, self.y, self.feature_names
         )
         
-        self.assertEqual(X_selected.shape[1], 5)
-        self.assertEqual(len(selected_names), 5)
+        self.assertGreater(X_selected.shape[1], 0)
+        self.assertEqual(len(selected_names), X_selected.shape[1])
         self.assertIsInstance(selected_names, list)
 
 class TestModelTrainer(unittest.TestCase):
@@ -101,15 +103,15 @@ class TestModelTrainer(unittest.TestCase):
     
     def test_data_preparation(self):
         """测试数据准备"""
-        from src.model_training import ModelTrainer
+        from src.model_training import MultiModelTrainer
         
-        trainer = ModelTrainer(self.config)
-        X_train, X_val, X_test, y_train, y_val, y_test = trainer.prepare_data(
+        trainer = MultiModelTrainer(self.config)
+        X_train, X_test, y_train, y_test = trainer.prepare_data(
             self.df, self.feature_cols, label_col='label'
         )
         
-        self.assertEqual(len(X_train) + len(X_val) + len(X_test), 100)
-        self.assertEqual(len(y_train) + len(y_val) + len(y_test), 100)
+        self.assertEqual(len(X_train) + len(X_test), 100)
+        self.assertEqual(len(y_train) + len(y_test), 100)
 
 if __name__ == '__main__':
     unittest.main()
