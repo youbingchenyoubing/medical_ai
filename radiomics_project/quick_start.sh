@@ -20,20 +20,12 @@ echo "激活虚拟环境..."
 source venv/bin/activate
 
 echo ""
-echo "Step 1/2: 安装基础依赖 (numpy等)..."
-pip install numpy>=1.24.0 pandas>=2.0.0 scipy>=1.11.0 matplotlib>=3.4.0 \
-    seaborn>=0.11.0 pyyaml>=6.0 tqdm>=4.62.0 joblib>=1.0.0 \
-    SimpleITK>=2.3.0 scikit-learn>=1.3.0 \
-    xgboost>=1.7.0 lightgbm>=3.3.0 catboost>=1.0.0 \
-    shap>=0.40.0
+echo "Step 1/2: 安装基础依赖..."
+pip install -r requirements.txt
 
 echo ""
-echo "Step 2/2: 安装 pyradiomics (需要 numpy 预装)..."
+echo "Step 2/2: 安装 pyradiomics (需要 numpy 预装, 使用 --no-build-isolation)..."
 pip install --no-build-isolation pyradiomics>=3.0.0
-
-echo ""
-echo "Step 3/3: 安装深度学习框架..."
-pip install torch>=2.0.0 monai>=1.3.0
 
 echo ""
 echo "========================================"
