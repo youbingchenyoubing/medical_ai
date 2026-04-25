@@ -93,14 +93,33 @@ pip install -r requirements.txt
 
 ### 2. 下载数据集
 
+脚本支持两种下载模式：**自动下载**（通过TCIA API）和**仅显示指引**。
+
 ```bash
-# 下载示例数据
+# 查看所有可用数据集及下载模式（Auto/Guide）
+python scripts/download_datasets.py --dataset list
+
+# 自动下载（默认模式，需网络可达TCIA）
+python scripts/download_datasets.py --dataset nsclc
+
+# 仅显示下载指引（不实际下载）
+python scripts/download_datasets.py --dataset nsclc --guide
+
+# 下载示例数据（用于测试，无需网络）
 python scripts/download_datasets.py --dataset sample
 
-# 下载公开数据集
-python scripts/download_datasets.py --dataset lidc
-python scripts/download_datasets.py --dataset nsclc
+# 下载全部数据集
+python scripts/download_datasets.py --dataset all
 ```
+
+**下载模式说明**：
+
+| 模式 | 说明 | 适用数据集 |
+|------|------|-----------|
+| Auto | 通过TCIA REST API自动下载影像数据 | lidc, nsclc, nsclc_rgenomics, lung_pet_ct_dx, tcga_lihc, waw_tace, head_neck_pet_ct, opc_radiomics, hnscc, breast_mri_nact, deeplesion |
+| Guide | 仅显示下载指引，需手动下载 | luna16, lits（需注册） |
+
+> **注意**：Auto模式下，脚本会先连接TCIA API查询数据集信息，确认后才开始下载。若网络不可达，会自动降级为Guide模式。部分数据集的标注/临床数据需单独下载，脚本会给出提示。
 
 ### 3. 选择方法
 
@@ -286,11 +305,45 @@ fused_features = np.concatenate([
 
 ## 支持的数据集
 
-| 数据集 | 病例数 | 类型 | 用途 | 推荐方法 |
-|--------|--------|------|------|----------|
-| LIDC-IDRI | 1,018 | 肺结节CT | 肺结节检测分类 | 深度学习 ✨ |
-| NSCLC-Radiomics | 422 | NSCLC CT | 预后预测 | 混合方法 |
-| LiTS | 201 | 肝脏CT | 肝脏肿瘤分割 | 深度学习 ✨ |
+### 🫁 肺部/胸部
+
+| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
+|--------|-----------|--------|------|---------|----------|
+| LIDC-IDRI | `lidc` | 1,018 | CT | 肺结节（4位医生标注+恶性度评分） | 深度学习 ✨ |
+| NSCLC-Radiomics | `nsclc` | 422 | CT | 肿瘤分割+临床+生存数据 | 混合方法 |
+| NSCLC-Radiogenomics | `nsclc_rgenomics` | 211 | CT | 肿瘤分割+基因表达+临床 | 影像基因组学 |
+| LUNA16 | `luna16` | 888 | CT | 肺结节（LIDC子集，剔除<3mm） | 深度学习 ✨ |
+| Lung-PET-CT-Dx | `lung_pet_ct_dx` | 284 | CT+PET | 肺癌亚型+生存数据 | 多模态影像组学 |
+
+### 🫀 肝脏/腹部
+
+| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
+|--------|-----------|--------|------|---------|----------|
+| LiTS | `lits` | 201 | CT | 肝脏+肿瘤分割 | 深度学习 ✨ |
+| TCGA-LIHC | `tcga_lihc` | 186 | MRI/CT | 肝细胞癌+基因+临床 | 影像基因组学 |
+| WAW-TACE | `waw_tace` | 117 | MRI | HCC TACE治疗+临床+疗效 | Delta影像组学 |
+
+### 🧠 头颈部
+
+| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
+|--------|-----------|--------|------|---------|----------|
+| Head-Neck-PET-CT | `head_neck_pet_ct` | 298 | CT+PET | 肿瘤分割+临床 | 多模态影像组学 |
+| OPC-Radiomics | `opc_radiomics` | 606 | CT | GTV分割+生存+HPV状态 | 生存预测 |
+| HNSCC | `hnscc` | 364 | CT | 肿瘤分割+临床+生存 | 预后预测 |
+
+### 🎗️ 乳腺
+
+| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
+|--------|-----------|--------|------|---------|----------|
+| Breast-MRI-NACT-Pilot | `breast_mri_nact` | 64 | MRI | 新辅助化疗+病理缓解(pCR) | Delta影像组学 |
+
+### 🧬 多器官综合
+
+| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
+|--------|-----------|--------|------|---------|----------|
+| DeepLesion | `deeplesion` | 10,594 | CT | 32,735个多器官多病灶标注 | 深度学习 ✨ |
+
+> 💡 **提示**：运行 `python scripts/download_datasets.py --dataset list` 可查看所有数据集的详细信息
 
 ## 输出结果
 
@@ -354,6 +407,20 @@ MIT License
 如有问题，请提交Issue或联系项目维护者。
 
 ## 更新日志
+
+### v1.2.0 (2026-04-24)
+- 📦 扩展公开数据集支持：从3个扩展到14个
+- 🫁 新增肺部数据集：NSCLC-Radiogenomics、LUNA16、Lung-PET-CT-Dx
+- 🫀 新增肝脏数据集：TCGA-LIHC、WAW-TACE
+- 🧠 新增头颈部数据集：Head-Neck-PET-CT、OPC-Radiomics、HNSCC
+- 🎗️ 新增乳腺数据集：Breast-MRI-NACT-Pilot
+- 🧬 新增多器官数据集：DeepLesion
+- 🔧 实现TCIA REST API自动下载（默认模式）
+- 🔧 新增 `--guide` 参数：仅显示下载指引
+- 🔧 新增 `--dataset list` 命令查看所有数据集
+- 🔧 新增 `DATASET_REGISTRY` 集中管理数据集元信息
+- 🔧 网络不可达时自动降级为指引模式
+- 🔧 支持断点续传（download_progress.json）
 
 ### v1.1.0 (2026-03-29)
 - ✨ 新增深度学习端到端方法
