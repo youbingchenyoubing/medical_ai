@@ -321,6 +321,7 @@ fused_features = np.concatenate([
 | Breast-MRI-NACT-Pilot | `breast_mri_nact` | 乳腺癌 | MRI | 64 | ~5GB | 新辅助化疗+病理缓解(pCR) | Auto |
 | DeepLesion | `deeplesion` | 多器官多病种 | CT | 10,594 | ~80GB | 32,735个多器官病灶标注 | Auto |
 
+> **值得注意的是**本人研究方向偏向肺癌、食管癌、胸腺瘤。
 > **下载模式**：Auto = 通过TCIA API自动下载；Guide = 需注册，仅提供下载指引
 >
 > 运行 `python scripts/download_datasets.py --dataset list` 可查看详细信息
