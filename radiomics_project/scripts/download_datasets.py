@@ -9,12 +9,12 @@
 - NSCLC-Radiomics: 非小细胞肺癌影像组学数据集 (422例)
 - NSCLC-Radiogenomics: 非小细胞肺癌影像基因组学数据集 (211例)
 - LUNA16: 肺结节分析挑战赛数据集 (888例, 需注册)
-- Lung-PET-CT-Dx: 肺癌PET-CT诊断数据集 (284例)
+- Lung-PET-CT-Dx: 肺癌PET-CT诊断数据集 (355例)
 
 腹部/肝脏:
 - LiTS: 肝脏肿瘤分割数据集 (201例, 需注册)
 - TCGA-LIHC: 肝细胞癌影像基因组学数据集 (186例)
-- WAW-TACE: HCC TACE治疗MRI数据集 (117例)
+- WAW-TACE: HCC TACE治疗多期CT数据集 (233例)
 
 头颈部:
 - Head-Neck-PET-CT: 头颈部PET-CT数据集 (298例)
@@ -116,7 +116,7 @@ DATASET_REGISTRY = {
     "lung_pet_ct_dx": {
         "name": "Lung-PET-CT-Dx",
         "category": "lung",
-        "cases": 284,
+        "cases": 355,
         "modality": "CT+PET",
         "size": "~25GB",
         "description": "肺癌PET-CT，含亚型诊断+生存数据",
@@ -158,10 +158,10 @@ DATASET_REGISTRY = {
     "waw_tace": {
         "name": "WAW-TACE",
         "category": "liver",
-        "cases": 117,
-        "modality": "MRI",
+        "cases": 233,
+        "modality": "CT",
         "size": "~8GB",
-        "description": "HCC TACE治疗MRI数据集，含临床+疗效标注",
+        "description": "HCC TACE治疗多期CT数据集，含临床+疗效标注",
         "url": "https://wiki.cancerimagingarchive.net/display/Public/WAW-TACE",
         "tcia_collection": "WAW-TACE",
         "requires_registration": False,
@@ -246,7 +246,7 @@ DATASET_REGISTRY = {
         "annotations": [
             {
                 "name": "DeepLesion-Annotations",
-                "url": "https://nihcc.app.box.com/v/DeepLesion",
+                "url": "https://nihcc.box.com/v/DeepLesion",
                 "note": "标注文件需从NIH Box下载",
             }
         ],
@@ -524,7 +524,7 @@ class DatasetDownloader:
     def download_lung_pet_ct_dx(self):
         self._print_dataset_info("lung_pet_ct_dx")
         print("\n  Special Notes:")
-        print("    - 含284例肺癌患者CT和PET图像")
+        print("    - 含355例肺癌患者CT和PET图像")
         print("    - 含组织学亚型诊断和生存数据")
         print("    - 适合多模态影像组学研究")
         self._download_dataset("lung_pet_ct_dx")
@@ -547,7 +547,7 @@ class DatasetDownloader:
     def download_waw_tace(self):
         self._print_dataset_info("waw_tace")
         print("\n  Special Notes:")
-        print("    - 含117例HCC患者TACE治疗前后MRI")
+        print("    - 含233例HCC患者TACE治疗前后多期CT")
         print("    - 含基线临床变量和疗效标注")
         print("    - 适合HCC治疗反应预测和Delta影像组学")
         self._download_dataset("waw_tace")
