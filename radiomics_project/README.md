@@ -305,45 +305,25 @@ fused_features = np.concatenate([
 
 ## 支持的数据集
 
-### 🫁 肺部/胸部
+| 数据集 | 命令行 key | 疾病类型 | 模态 | 病例数 | 大小 | 标注内容 | 下载模式 |
+|--------|-----------|---------|------|--------|------|---------|---------|
+| LIDC-IDRI | `lidc` | 肺结节 | CT | 1,018 | ~120GB | 4位医生标注+恶性度评分 | Auto |
+| NSCLC-Radiomics | `nsclc` | 非小细胞肺癌 | CT | 422 | ~30GB | 肿瘤分割+临床+生存数据 | Auto |
+| NSCLC-Radiogenomics | `nsclc_rgenomics` | 非小细胞肺癌 | CT | 211 | ~15GB | 肿瘤分割+基因表达+临床 | Auto |
+| LUNA16 | `luna16` | 肺结节 | CT | 888 | ~50GB | 肺结节标注（LIDC子集，剔除<3mm） | Guide |
+| Lung-PET-CT-Dx | `lung_pet_ct_dx` | 肺癌 | CT+PET | 284 | ~25GB | 肺癌亚型+生存数据 | Auto |
+| LiTS | `lits` | 肝脏肿瘤 | CT | 201 | ~20GB | 肝脏+肿瘤分割 | Guide |
+| TCGA-LIHC | `tcga_lihc` | 肝细胞癌 | MRI/CT | 186 | ~10GB | 影像+基因+临床数据 | Auto |
+| WAW-TACE | `waw_tace` | 肝细胞癌(HCC) | MRI | 117 | ~8GB | TACE治疗前后+临床+疗效 | Auto |
+| Head-Neck-PET-CT | `head_neck_pet_ct` | 头颈部癌 | CT+PET | 298 | ~30GB | 肿瘤分割+临床数据 | Auto |
+| OPC-Radiomics | `opc_radiomics` | 口咽癌 | CT | 606 | ~20GB | GTV分割+生存+HPV状态 | Auto |
+| HNSCC | `hnscc` | 头颈鳞状细胞癌 | CT | 364 | ~15GB | 肿瘤分割+临床+生存 | Auto |
+| Breast-MRI-NACT-Pilot | `breast_mri_nact` | 乳腺癌 | MRI | 64 | ~5GB | 新辅助化疗+病理缓解(pCR) | Auto |
+| DeepLesion | `deeplesion` | 多器官多病种 | CT | 10,594 | ~80GB | 32,735个多器官病灶标注 | Auto |
 
-| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
-|--------|-----------|--------|------|---------|----------|
-| LIDC-IDRI | `lidc` | 1,018 | CT | 肺结节（4位医生标注+恶性度评分） | 深度学习 ✨ |
-| NSCLC-Radiomics | `nsclc` | 422 | CT | 肿瘤分割+临床+生存数据 | 混合方法 |
-| NSCLC-Radiogenomics | `nsclc_rgenomics` | 211 | CT | 肿瘤分割+基因表达+临床 | 影像基因组学 |
-| LUNA16 | `luna16` | 888 | CT | 肺结节（LIDC子集，剔除<3mm） | 深度学习 ✨ |
-| Lung-PET-CT-Dx | `lung_pet_ct_dx` | 284 | CT+PET | 肺癌亚型+生存数据 | 多模态影像组学 |
-
-### 🫀 肝脏/腹部
-
-| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
-|--------|-----------|--------|------|---------|----------|
-| LiTS | `lits` | 201 | CT | 肝脏+肿瘤分割 | 深度学习 ✨ |
-| TCGA-LIHC | `tcga_lihc` | 186 | MRI/CT | 肝细胞癌+基因+临床 | 影像基因组学 |
-| WAW-TACE | `waw_tace` | 117 | MRI | HCC TACE治疗+临床+疗效 | Delta影像组学 |
-
-### 🧠 头颈部
-
-| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
-|--------|-----------|--------|------|---------|----------|
-| Head-Neck-PET-CT | `head_neck_pet_ct` | 298 | CT+PET | 肿瘤分割+临床 | 多模态影像组学 |
-| OPC-Radiomics | `opc_radiomics` | 606 | CT | GTV分割+生存+HPV状态 | 生存预测 |
-| HNSCC | `hnscc` | 364 | CT | 肿瘤分割+临床+生存 | 预后预测 |
-
-### 🎗️ 乳腺
-
-| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
-|--------|-----------|--------|------|---------|----------|
-| Breast-MRI-NACT-Pilot | `breast_mri_nact` | 64 | MRI | 新辅助化疗+病理缓解(pCR) | Delta影像组学 |
-
-### 🧬 多器官综合
-
-| 数据集 | 命令行 key | 病例数 | 模态 | 标注内容 | 推荐方法 |
-|--------|-----------|--------|------|---------|----------|
-| DeepLesion | `deeplesion` | 10,594 | CT | 32,735个多器官多病灶标注 | 深度学习 ✨ |
-
-> 💡 **提示**：运行 `python scripts/download_datasets.py --dataset list` 可查看所有数据集的详细信息
+> **下载模式**：Auto = 通过TCIA API自动下载；Guide = 需注册，仅提供下载指引
+>
+> 运行 `python scripts/download_datasets.py --dataset list` 可查看详细信息
 
 ## 输出结果
 
