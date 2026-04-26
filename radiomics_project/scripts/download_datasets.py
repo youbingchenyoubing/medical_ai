@@ -257,20 +257,47 @@ DATASET_REGISTRY = {
 class TCIAClient:
     """TCIA REST API 客户端"""
 
-    def __init__(self, api_base: str = TCIA_API_BASE, timeout: int = 120):
+    CONNECT_TIMEOUT = 15
+    _connection_ok = None
+
+    def __init__(self, api_base: str = TCIA_API_BASE, timeout: int = 120, retries: int = 3):
         self.api_base = api_base
         self.timeout = timeout
+        self.retries = retries
         self.session = requests.Session()
         self.session.headers.update({"Accept": "application/json"})
         self._test_connection()
 
+    def _request_with_retry(self, url, params=None, stream=False, timeout=None):
+        if timeout is None:
+            timeout = self.timeout
+        last_error = None
+        for attempt in range(1, self.retries + 1):
+            try:
+                r = self.session.get(url, params=params, stream=stream, timeout=timeout)
+                r.raise_for_status()
+                return r
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                last_error = e
+                if attempt < self.retries:
+                    wait = min(2 ** attempt, 30)
+                    print(f"    [Retry {attempt}/{self.retries}] {type(e).__name__}, waiting {wait}s...")
+                    time.sleep(wait)
+            except requests.exceptions.HTTPError as e:
+                raise
+        raise last_error
+
     def _test_connection(self):
+        if TCIAClient._connection_ok is True:
+            return True
         try:
             r = self.session.get(
                 f"{self.api_base}/getCollectionValues",
-                timeout=self.timeout,
+                timeout=self.CONNECT_TIMEOUT,
             )
             r.raise_for_status()
+            TCIAClient._connection_ok = True
             return True
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout,
@@ -278,20 +305,22 @@ class TCIAClient:
             print(f"\n  [WARNING] TCIA API connection failed: {e}")
             print(f"  The Cancer Imaging Archive may be unreachable from your network.")
             print(f"  Falling back to guide-only mode. Use --guide to skip this check.")
+            TCIAClient._connection_ok = False
             return False
+
+    def is_connected(self):
+        return TCIAClient._connection_ok is True
 
     def get_series_list(self, collection: str) -> list:
         url = f"{self.api_base}/getSeries"
         params = {"Collection": collection}
-        r = self.session.get(url, params=params, timeout=self.timeout)
-        r.raise_for_status()
+        r = self._request_with_retry(url, params=params)
         return r.json()
 
     def get_patient_ids(self, collection: str) -> list:
         url = f"{self.api_base}/getPatient"
         params = {"Collection": collection}
-        r = self.session.get(url, params=params, timeout=self.timeout)
-        r.raise_for_status()
+        r = self._request_with_retry(url, params=params)
         return r.json()
 
     def download_series(self, series_uid: str, output_path: str) -> str:
@@ -301,8 +330,7 @@ class TCIAClient:
         if os.path.exists(output_path):
             return output_path
 
-        r = self.session.get(url, params=params, stream=True, timeout=self.timeout)
-        r.raise_for_status()
+        r = self._request_with_retry(url, params=params, stream=True)
 
         total_size = int(r.headers.get('content-length', 0))
         tmp_path = output_path + ".tmp"
@@ -322,15 +350,19 @@ class TCIAClient:
 class DatasetDownloader:
     """数据集下载器"""
 
-    def __init__(self, output_dir: str = "data/raw", guide_only: bool = False):
+    def __init__(self, output_dir: str = "data/raw", guide_only: bool = False,
+                 timeout: int = 120, retries: int = 3):
         self.output_dir = output_dir
         self.guide_only = guide_only
+        self.timeout = timeout
+        self.retries = retries
         os.makedirs(output_dir, exist_ok=True)
 
         print(f"DatasetDownloader initialized")
         print(f"Output directory: {output_dir}")
         if guide_only:
             print(f"Mode: guide-only (no actual download)")
+        print(f"Timeout: {timeout}s | Retries: {retries}")
 
     def _print_dataset_info(self, key: str):
         info = DATASET_REGISTRY[key]
@@ -383,9 +415,14 @@ class DatasetDownloader:
 
         print(f"\n  Connecting to TCIA API...")
         try:
-            client = TCIAClient()
+            client = TCIAClient(timeout=self.timeout, retries=self.retries)
         except Exception as e:
             print(f"  [ERROR] Failed to connect to TCIA API: {e}")
+            print(f"  Falling back to download guide...")
+            self._print_download_guide(key)
+            return
+
+        if not client.is_connected():
             print(f"  Falling back to download guide...")
             self._print_download_guide(key)
             return
@@ -711,10 +748,15 @@ Examples:
                         help='Output directory')
     parser.add_argument('--guide', action='store_true',
                         help='Only show download guide, do not actually download')
+    parser.add_argument('--timeout', type=int, default=120,
+                        help='API request timeout in seconds (default: 120)')
+    parser.add_argument('--retries', type=int, default=3,
+                        help='Number of retries for failed requests (default: 3)')
 
     args = parser.parse_args()
 
-    downloader = DatasetDownloader(output_dir=args.output, guide_only=args.guide)
+    downloader = DatasetDownloader(output_dir=args.output, guide_only=args.guide,
+                                   timeout=args.timeout, retries=args.retries)
 
     if args.dataset == 'list':
         downloader.list_datasets()
