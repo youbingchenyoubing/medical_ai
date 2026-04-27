@@ -54,14 +54,14 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~120GB",
         "description": "胸部CT肺结节数据集，4位医生标注+恶性度评分",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/LIDC-IDRI",
+        "url": "https://www.cancerimagingarchive.net/collection/lidc-idri/",
         "tcia_collection": "LIDC-IDRI",
         "requires_registration": False,
         "annotations": [
             {
                 "name": "LIDC-XML-Annotations",
-                "url": "https://wiki.cancerimagingarchive.net/display/Public/LIDC-IDRI#LIDC-IDRI-AnnotationFiles",
-                "note": "肺结节标注XML文件，需单独下载",
+                "url": "https://www.cancerimagingarchive.net/collection/lidc-idri/",
+                "note": "肺结节标注XML文件，在Collection页面下载",
             }
         ],
     },
@@ -72,14 +72,14 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~30GB",
         "description": "非小细胞肺癌CT，含肿瘤分割+临床+生存数据",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/NSCLC-Radiomics",
+        "url": "https://www.cancerimagingarchive.net/collection/nsclc-radiomics/",
         "tcia_collection": "NSCLC-Radiomics",
         "requires_registration": False,
         "annotations": [
             {
                 "name": "NSCLC-Radiomics-Annotations",
-                "url": "https://wiki.cancerimagingarchive.net/display/Public/NSCLC-Radiomics#NSCLC-Radiomics-ContourDataandClinicalData",
-                "note": "肿瘤分割轮廓和临床数据，需单独下载",
+                "url": "https://www.cancerimagingarchive.net/collection/nsclc-radiomics/",
+                "note": "肿瘤分割轮廓和临床数据，在Collection页面下载",
             }
         ],
     },
@@ -90,14 +90,14 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~15GB",
         "description": "非小细胞肺癌CT，含肿瘤分割+基因表达+临床数据",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/NSCLC+Radiogenomics",
+        "url": "https://www.cancerimagingarchive.net/collection/nsclc-radiogenomics/",
         "tcia_collection": "NSCLC-Radiogenomics",
         "requires_registration": False,
         "annotations": [
             {
                 "name": "NSCLC-Radiogenomics-Clinical-Genomic",
-                "url": "https://wiki.cancerimagingarchive.net/display/Public/NSCLC+Radiogenomics#NSCLCRadiogenomics-ClinicalDataandGeneExpressionData",
-                "note": "临床和基因表达数据，需单独下载",
+                "url": "https://www.cancerimagingarchive.net/collection/nsclc-radiogenomics/",
+                "note": "临床和基因表达数据，在Collection页面下载",
             }
         ],
     },
@@ -120,7 +120,7 @@ DATASET_REGISTRY = {
         "modality": "CT+PET",
         "size": "~25GB",
         "description": "肺癌PET-CT，含亚型诊断+生存数据",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/Lung+PET-CT+Dx",
+        "url": "https://www.cancerimagingarchive.net/collection/lung-pet-ct-dx/",
         "tcia_collection": "Lung-PET-CT-Dx",
         "requires_registration": False,
         "annotations": [],
@@ -144,7 +144,7 @@ DATASET_REGISTRY = {
         "modality": "MRI/CT",
         "size": "~10GB",
         "description": "肝细胞癌，含基因+影像+临床数据",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/TCGA-LIHC",
+        "url": "https://www.cancerimagingarchive.net/collection/tcga-lihc/",
         "tcia_collection": "TCGA-LIHC",
         "requires_registration": False,
         "annotations": [
@@ -162,7 +162,7 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~8GB",
         "description": "HCC TACE治疗多期CT数据集，含临床+疗效标注",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/WAW-TACE",
+        "url": "https://www.cancerimagingarchive.net/collection/waw-tace/",
         "tcia_collection": "WAW-TACE",
         "requires_registration": False,
         "annotations": [],
@@ -174,14 +174,14 @@ DATASET_REGISTRY = {
         "modality": "CT+PET",
         "size": "~30GB",
         "description": "头颈部PET-CT，含肿瘤分割+临床数据",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/Head-Neck-PET-CT",
+        "url": "https://www.cancerimagingarchive.net/collection/head-neck-pet-ct/",
         "tcia_collection": "Head-Neck-PET-CT",
         "requires_registration": False,
         "annotations": [
             {
                 "name": "Head-Neck-PET-CT-Annotations",
-                "url": "https://wiki.cancerimagingarchive.net/display/Public/Head-Neck-PET-CT#HeadNeckPETCT-ContourDataandClinicalData",
-                "note": "肿瘤分割轮廓和临床数据，需单独下载",
+                "url": "https://www.cancerimagingarchive.net/collection/head-neck-pet-ct/",
+                "note": "肿瘤分割轮廓和临床数据，在Collection页面下载",
             }
         ],
     },
@@ -192,14 +192,14 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~20GB",
         "description": "口咽癌CT，含GTV分割+生存+HPV状态",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/OPC-Radiomics",
+        "url": "https://www.cancerimagingarchive.net/collection/opc-radiomics/",
         "tcia_collection": "OPC-Radiomics",
         "requires_registration": False,
         "annotations": [
             {
                 "name": "OPC-Radiomics-Clinical",
-                "url": "https://wiki.cancerimagingarchive.net/display/Public/OPC-Radiomics#OPCRadiomics-ClinicalData",
-                "note": "临床和生存数据，需单独下载",
+                "url": "https://www.cancerimagingarchive.net/collection/opc-radiomics/",
+                "note": "临床和生存数据，在Collection页面下载",
             }
         ],
     },
@@ -210,14 +210,14 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~15GB",
         "description": "头颈鳞状细胞癌CT，含肿瘤分割+临床+生存数据",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/HNSCC",
+        "url": "https://www.cancerimagingarchive.net/collection/hnscc/",
         "tcia_collection": "HNSCC",
         "requires_registration": False,
         "annotations": [
             {
                 "name": "HNSCC-Clinical",
-                "url": "https://wiki.cancerimagingarchive.net/display/Public/HNSCC#HNSCC-ClinicalData",
-                "note": "临床和生存数据，需单独下载",
+                "url": "https://www.cancerimagingarchive.net/collection/hnscc/",
+                "note": "临床和生存数据，在Collection页面下载",
             }
         ],
     },
@@ -228,7 +228,7 @@ DATASET_REGISTRY = {
         "modality": "MRI",
         "size": "~5GB",
         "description": "乳腺癌新辅助化疗MRI，含病理缓解标注",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/Breast-MRI-NACT-Pilot",
+        "url": "https://www.cancerimagingarchive.net/collection/breast-mri-nact-pilot/",
         "tcia_collection": "Breast-MRI-NACT-Pilot",
         "requires_registration": False,
         "annotations": [],
@@ -240,7 +240,7 @@ DATASET_REGISTRY = {
         "modality": "CT",
         "size": "~80GB",
         "description": "多器官多病灶CT，32,735个标注病灶",
-        "url": "https://wiki.cancerimagingarchive.net/display/Public/DeepLesion",
+        "url": "https://www.cancerimagingarchive.net/collection/deeplesion/",
         "tcia_collection": "DeepLesion",
         "requires_registration": False,
         "annotations": [
@@ -395,7 +395,7 @@ class DatasetDownloader:
             print(f"     tc = TCIAClient()")
             print(f"     tc.get_image(collection='{col}', downloadPath='data/raw/{info['name']}')")
             print(f"\n  4. Using NBIA Data Retriever:")
-            print(f"     https://wiki.cancerimagingarchive.net/display/NBIA/Downloading+TCIA+Images")
+            print(f"     https://www.cancerimagingarchive.net/access-data/")
 
         if info.get("annotations"):
             print(f"\n  Annotation / Clinical Data (separate download):")
