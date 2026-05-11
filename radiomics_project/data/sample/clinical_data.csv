@@ -1,0 +1,11 @@
+patient_id,age,gender,histology,stage,tumor_size,treatment,survival_months,event
+Patient_001,78,M,squamous,II,6.2,palliative,17.2,1
+Patient_002,68,F,squamous,II,5.1,surgery,36.7,1
+Patient_003,54,M,squamous,I,3.7,palliative,7.7,1
+Patient_004,82,F,adenocarcinoma,IV,1.1,palliative,51.5,1
+Patient_005,47,F,adenocarcinoma,I,6.7,chemoradiation,30.3,1
+Patient_006,60,F,squamous,I,4.4,surgery,27.3,1
+Patient_007,78,M,squamous,III,3.3,chemoradiation,56.0,1
+Patient_008,58,F,adenocarcinoma,II,1.1,chemoradiation,45.3,1
+Patient_009,62,M,adenocarcinoma,IV,2.4,chemoradiation,23.6,0
+Patient_010,50,F,adenocarcinoma,II,2.4,chemoradiation,36.8,0

@@ -304,7 +304,6 @@ class TCIAClient:
                 requests.exceptions.HTTPError) as e:
             print(f"\n  [WARNING] TCIA API connection failed: {e}")
             print(f"  The Cancer Imaging Archive may be unreachable from your network.")
-            print(f"  Falling back to guide-only mode. Use --guide to skip this check.")
             TCIAClient._connection_ok = False
             return False
 
@@ -383,19 +382,29 @@ class DatasetDownloader:
         col = info.get("tcia_collection") or info["name"]
 
         print("\n  Download Methods:")
-        print(f"\n  1. Official Website:")
+        print(f"\n  1. Official Website (Recommended):")
         print(f"     {info['url']}")
-
+        print(f"     - Visit the collection page")
+        print(f"     - Look for the 'Download' or 'Access Data' button")
+        
         if info.get("tcia_collection"):
-            print(f"\n  2. Using this script (auto download):")
+            print(f"\n  2. Using NBIA Data Retriever (Best for bulk downloads):")
+            print(f"     - Download tool: https://wiki.cancerimagingarchive.net/x/X4ATAg")
+            print(f"     - Search for collection: {col}")
+            print(f"     - Select and download the data")
+            
+            print(f"\n  3. Using this script (if API is working):")
             print(f"     python scripts/download_datasets.py --dataset {key}")
-            print(f"\n  3. Using TCIA Client:")
+            
+            print(f"\n  4. Using TCIA Python Client:")
             print(f"     pip install tcia-client")
             print(f"     from tciaclient import TCIAClient")
             print(f"     tc = TCIAClient()")
             print(f"     tc.get_image(collection='{col}', downloadPath='data/raw/{info['name']}')")
-            print(f"\n  4. Using NBIA Data Retriever:")
-            print(f"     https://www.cancerimagingarchive.net/access-data/")
+        
+        print(f"\n  5. Using TCIA REST API Directly:")
+        print(f"     API documentation: https://wiki.cancerimagingarchive.net/x/eQC0Ag")
+        print(f"     Collection: {col}")
 
         if info.get("annotations"):
             print(f"\n  Annotation / Clinical Data (separate download):")
@@ -403,6 +412,12 @@ class DatasetDownloader:
                 print(f"    - {ann['name']}")
                 print(f"      {ann['url']}")
                 print(f"      ({ann['note']})")
+        
+        print(f"\n  6. If API continues to fail:")
+        print(f"     - Check your network connection")
+        print(f"     - Try using a VPN (TCIA may have regional restrictions)")
+        print(f"     - Use NBIA Data Retriever instead")
+        print(f"     - Download manually from the website")
 
         print("\n" + "=" * 70)
 
@@ -417,13 +432,18 @@ class DatasetDownloader:
         try:
             client = TCIAClient(timeout=self.timeout, retries=self.retries)
         except Exception as e:
-            print(f"  [ERROR] Failed to connect to TCIA API: {e}")
-            print(f"  Falling back to download guide...")
+            print(f"  [ERROR] Failed to initialize TCIA client: {e}")
+            print(f"  Falling back to detailed download guide...")
             self._print_download_guide(key)
             return
 
         if not client.is_connected():
-            print(f"  Falling back to download guide...")
+            print(f"\n  [INFO] TCIA API is currently unreachable.")
+            print(f"  This could be due to:")
+            print(f"  - Network restrictions (firewall, proxy, or regional blocks)")
+            print(f"  - TCIA service is temporarily unavailable")
+            print(f"  - API endpoint has changed")
+            print(f"\n  Falling back to detailed download guide...")
             self._print_download_guide(key)
             return
 
